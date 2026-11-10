@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="or">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fakir Mohan AR</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Oriya:wght@400;600&family=Noto+Serif+Oriya:wght@600&display=swap">
+<script type="module" src="https://unpkg.com/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+<style>
+  :root { --bg: #f3efe7; --stage: #e6dfd0; --fg: #2a2620; --muted: #776f62; --accent: #1f4d2b; --on-accent: #fff; --chip: rgba(255,255,255,.92);
+          --body: "Noto Sans Oriya", system-ui, sans-serif; --display: "Noto Serif Oriya", Georgia, serif; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #1b1a17; --stage: #26241f; --fg: #eee8dc; --muted: #a39b8c; --accent: #6fae7f; --on-accent: #10140f; --chip: rgba(44,42,36,.92); color-scheme: dark; } }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--body); }
+  model-viewer { width: 100%; height: 100%; background: var(--stage); --poster-color: transparent; }
+  .top { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 0; right: 0; text-align: center; pointer-events: none; }
+  h1 { margin: 0; font: 600 22px var(--display); }
+  .caption { margin: 6px 16px 0; font-size: 16px; min-height: 1.4em; }
+  .bottom { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; gap: 10px; justify-items: center; padding: 0 16px; }
+  .lines { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .lines button { padding: 10px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--chip); color: var(--fg); font: 15px var(--body); }
+  .ar-btn { padding: 12px 22px; border: 0; border-radius: 24px; background: var(--accent); color: var(--on-accent); font: 600 16px var(--body); }
+  .note { font-size: 11px; color: var(--muted); text-align: center; }
+  /* inside AR: hide the AR button and the note, keep the lines */
+  model-viewer[ar-status="session-started"] .ar-btn, model-viewer[ar-status="session-started"] .note { display: none; }
+</style>
+</head>
+<body>
+<model-viewer id="mv" src="fakir_mohan.glb" alt="3D model of Fakir Mohan Senapati"
+  ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="fixed"
+  camera-controls camera-orbit="0deg 85deg 4.8m" camera-target="0m 0.62m 0m" field-of-view="30deg"
+  shadow-intensity="1" exposure="1.1" animation-name="Idle" autoplay>
+  <div class="top">
+    <h1>ଫକୀରମୋହନ ସେନାପତି</h1>
+    <p class="caption" id="caption">ଗୋଟିଏ ବଟନ୍ ଦବାନ୍ତୁ…</p>
+  </div>
+  <div class="bottom">
+    <div class="lines" id="lines"></div>
+    <button slot="ar-button" class="ar-btn">ଘରେ ଦେଖନ୍ତୁ · View in your room</button>
+    <div class="note">AI tribute to Fakir Mohan Senapati (1843–1918), Kathasamrat of Odia literature.</div>
+  </div>
+</model-viewer>
+
+<script>
+const LINES = [
+  { label: "ନମସ୍କାର",       say: "Namaskar! I am Fakir Mohan Senapati.", bow: true },
+  { label: "ମୋ ଜନ୍ମ",        say: "I was born in 1843, in Mallikashpur, in Balasore." },
+  { label: "ଛ ମାଣ ଆଠ ଗୁଣ୍ଠ", say: "I wrote the novel, Chha Mana Atha Guntha. Six acres and a third." },
+  { label: "କଥାସମ୍ରାଟ",      say: "People call me Kathasamrat. The emperor of stories." },
+];
+const mv = document.getElementById("mv"), caption = document.getElementById("caption");
+let speaking = false, after = null;
+
+function anim(name, once, next) {
+  mv.animationName = name;
+  after = next || null;
+  // let the new clip settle first, or model-viewer restarts it as an endless loop
+  mv.updateComplete.then(() => mv.play({ repetitions: once ? 1 : Infinity }));
+}
+mv.addEventListener("finished", () => { const n = after; after = null; n ? n() : anim("Idle"); });
+mv.addEventListener("load", () => anim("Wave", true), { once: true });
+
+function pickVoice() {
+  const vs = speechSynthesis.getVoices().filter(v => v.lang.startsWith("en"));
+  return vs.find(v => v.lang === "en-IN" && /male|ravi|hemant/i.test(v.name) && !/female/i.test(v.name))
+      || vs.find(v => v.lang === "en-IN") || vs.find(v => /male/i.test(v.name) && !/female/i.test(v.name)) || vs[0];
+}
+function talkFor(ms) { speaking = true; anim("Talk"); setTimeout(() => { speaking = false; anim("Idle"); }, ms); }
+function speak(line) {
+  const startTalk = () => (speaking ? anim("Talk") : null);
+  if (line.bow) anim("Namaskar", true, startTalk);
+  const fallback = () => { const ms = (1 + line.say.length * 0.07) * 1000; line.bow ? (after = () => talkFor(ms)) : talkFor(ms); };
+  if (!("speechSynthesis" in window)) return fallback();
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(line.say);
+  const v = pickVoice(); if (v) u.voice = v;
+  u.lang = v ? v.lang : "en-IN"; u.rate = 0.88; u.pitch = 0.75;
+  let started = false;
+  u.onstart = () => { started = true; speaking = true; if (!line.bow || mv.animationName !== "Namaskar") anim("Talk"); };
+  u.onend = () => { speaking = false; if (mv.animationName === "Talk") anim("Idle"); };
+  u.onerror = () => { if (!started) { started = true; fallback(); } };
+  speechSynthesis.speak(u);
+  setTimeout(() => { if (!started) { started = true; fallback(); } }, 1500);
+}
+
+for (const line of LINES) {
+  const b = document.createElement("button");
+  b.textContent = line.label;
+  b.onclick = () => { caption.textContent = line.say; speak(line); };
+  document.getElementById("lines").appendChild(b);
+}
+</script>
+</body>
+</html>
