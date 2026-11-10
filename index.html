@@ -23,7 +23,8 @@
   .ar-btn:disabled { opacity: .55; }
   .note { font-size: 11px; color: var(--muted); text-align: center; }
   /* during AR the line buttons move inside the viewer so they stay on the camera view */
-  model-viewer .bottom { position: absolute; left: 0; right: 0; bottom: 0; }
+  model-viewer .bottom { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; }
+  model-viewer .bottom button { pointer-events: auto; }
   model-viewer .bottom .ar-btn, model-viewer .bottom .note { display: none; }
 </style>
 </head>
@@ -33,7 +34,7 @@
   <p class="caption" id="caption">ଗୋଟିଏ ବଟନ୍ ଦବାନ୍ତୁ…</p>
 </div>
 <model-viewer id="mv" src="fakir_mohan.glb" alt="3D model of Fakir Mohan Senapati"
-  ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="fixed"
+  ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="auto"
   camera-controls camera-orbit="0deg 85deg auto" field-of-view="30deg"
   shadow-intensity="1" exposure="1.1" animation-name="Idle" autoplay>
   <div slot="ar-button" hidden></div>
