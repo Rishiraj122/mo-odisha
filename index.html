@@ -21,6 +21,7 @@
   .lines button { padding: 9px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--chip); color: var(--fg); font: 15px var(--body); }
   .ar-btn { padding: 12px 22px; border: 0; border-radius: 24px; background: var(--accent); color: var(--on-accent); font: 600 16px var(--body); }
   .ar-btn:disabled { opacity: .55; }
+  .ar-hint { padding: 8px 14px; border-radius: 16px; background: rgba(0,0,0,.6); color: #fff; font-size: 14px; text-align: center; }
   .note { font-size: 11px; color: var(--muted); text-align: center; }
   /* during AR the line buttons move inside the viewer so they stay on the camera view */
   model-viewer .bottom { position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; }
@@ -40,6 +41,7 @@
   <div slot="ar-button" hidden></div>
 </model-viewer>
 <div class="bottom" id="controls">
+  <div class="ar-hint" id="arHint" hidden>Move your phone slowly over the floor to lock him in place</div>
   <div class="lines" id="lines"></div>
   <button class="ar-btn" id="arBtn">ଘରେ ଦେଖନ୍ତୁ · View in your room</button>
   <div class="note" id="note">AI tribute to Fakir Mohan Senapati (1843–1918), Kathasamrat of Odia literature.</div>
@@ -69,7 +71,10 @@ mv.addEventListener("load", () => {
 
 const arBtn = document.getElementById("arBtn"), controls = document.getElementById("controls");
 arBtn.onclick = () => mv.activateAR();
+// show a hint whenever AR loses track of the surface (he drifts with the camera until it's found again)
+mv.addEventListener("ar-tracking", e => { document.getElementById("arHint").hidden = e.detail.status === "tracking"; });
 mv.addEventListener("ar-status", e => {
+  if (e.detail.status !== "session-started") document.getElementById("arHint").hidden = true;
   if (e.detail.status === "session-started") mv.appendChild(controls);           // keep the lines on the camera view
   else if (e.detail.status === "not-presenting" || e.detail.status === "failed") mv.after(controls);
   if (e.detail.status === "failed") document.getElementById("note").textContent = "Couldn't start AR here. Try Chrome on an ARCore phone.";
