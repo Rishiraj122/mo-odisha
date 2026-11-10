@@ -11,34 +11,38 @@
           --body: "Noto Sans Oriya", system-ui, sans-serif; --display: "Noto Serif Oriya", Georgia, serif; }
   @media (prefers-color-scheme: dark) { :root { --bg: #1b1a17; --stage: #26241f; --fg: #eee8dc; --muted: #a39b8c; --accent: #6fae7f; --on-accent: #10140f; --chip: rgba(44,42,36,.92); color-scheme: dark; } }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: var(--body); }
-  model-viewer { width: 100%; height: 100%; background: var(--stage); --poster-color: transparent; }
-  .top { position: absolute; top: calc(12px + env(safe-area-inset-top)); left: 0; right: 0; text-align: center; pointer-events: none; }
-  h1 { margin: 0; font: 600 22px var(--display); }
-  .caption { margin: 6px 16px 0; font-size: 16px; min-height: 1.4em; }
-  .bottom { position: absolute; left: 0; right: 0; bottom: calc(14px + env(safe-area-inset-bottom)); display: grid; gap: 10px; justify-items: center; padding: 0 16px; }
+  body { display: flex; flex-direction: column; height: 100dvh; }
+  .top { text-align: center; padding: calc(10px + env(safe-area-inset-top)) 16px 4px; }
+  h1 { margin: 0; font: 600 21px var(--display); }
+  .caption { margin: 4px 0 0; font-size: 15px; min-height: 2.6em; }
+  model-viewer { flex: 1; min-height: 0; width: 100%; background: var(--stage); --poster-color: transparent; }
+  .bottom { display: grid; gap: 10px; justify-items: center; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); }
   .lines { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .lines button { padding: 10px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--chip); color: var(--fg); font: 15px var(--body); }
+  .lines button { padding: 9px 14px; border-radius: 20px; border: 1px solid var(--accent); background: var(--chip); color: var(--fg); font: 15px var(--body); }
   .ar-btn { padding: 12px 22px; border: 0; border-radius: 24px; background: var(--accent); color: var(--on-accent); font: 600 16px var(--body); }
+  .ar-btn:disabled { opacity: .55; }
   .note { font-size: 11px; color: var(--muted); text-align: center; }
-  /* inside AR: hide the AR button and the note, keep the lines */
-  model-viewer[ar-status="session-started"] .ar-btn, model-viewer[ar-status="session-started"] .note { display: none; }
+  /* during AR the line buttons move inside the viewer so they stay on the camera view */
+  model-viewer .bottom { position: absolute; left: 0; right: 0; bottom: 0; }
+  model-viewer .bottom .ar-btn, model-viewer .bottom .note { display: none; }
 </style>
 </head>
 <body>
+<div class="top">
+  <h1>ଫକୀରମୋହନ ସେନାପତି</h1>
+  <p class="caption" id="caption">ଗୋଟିଏ ବଟନ୍ ଦବାନ୍ତୁ…</p>
+</div>
 <model-viewer id="mv" src="fakir_mohan.glb" alt="3D model of Fakir Mohan Senapati"
   ar ar-modes="webxr scene-viewer quick-look" ar-placement="floor" ar-scale="fixed"
-  camera-controls camera-orbit="0deg 85deg 4.8m" camera-target="0m 0.62m 0m" field-of-view="30deg"
+  camera-controls camera-orbit="0deg 85deg auto" field-of-view="30deg"
   shadow-intensity="1" exposure="1.1" animation-name="Idle" autoplay>
-  <div class="top">
-    <h1>ଫକୀରମୋହନ ସେନାପତି</h1>
-    <p class="caption" id="caption">ଗୋଟିଏ ବଟନ୍ ଦବାନ୍ତୁ…</p>
-  </div>
-  <div class="bottom">
-    <div class="lines" id="lines"></div>
-    <button slot="ar-button" class="ar-btn">ଘରେ ଦେଖନ୍ତୁ · View in your room</button>
-    <div class="note">AI tribute to Fakir Mohan Senapati (1843–1918), Kathasamrat of Odia literature.</div>
-  </div>
+  <div slot="ar-button" hidden></div>
 </model-viewer>
+<div class="bottom" id="controls">
+  <div class="lines" id="lines"></div>
+  <button class="ar-btn" id="arBtn">ଘରେ ଦେଖନ୍ତୁ · View in your room</button>
+  <div class="note" id="note">AI tribute to Fakir Mohan Senapati (1843–1918), Kathasamrat of Odia literature.</div>
+</div>
 
 <script>
 const LINES = [
@@ -57,7 +61,18 @@ function anim(name, once, next) {
   mv.updateComplete.then(() => mv.play({ repetitions: once ? 1 : Infinity }));
 }
 mv.addEventListener("finished", () => { const n = after; after = null; n ? n() : anim("Idle"); });
-mv.addEventListener("load", () => anim("Wave", true), { once: true });
+mv.addEventListener("load", () => {
+  anim("Wave", true);
+  if (!mv.canActivateAR) { arBtn.disabled = true; arBtn.textContent = "AR isn't available in this browser"; }
+}, { once: true });
+
+const arBtn = document.getElementById("arBtn"), controls = document.getElementById("controls");
+arBtn.onclick = () => mv.activateAR();
+mv.addEventListener("ar-status", e => {
+  if (e.detail.status === "session-started") mv.appendChild(controls);           // keep the lines on the camera view
+  else if (e.detail.status === "not-presenting" || e.detail.status === "failed") mv.after(controls);
+  if (e.detail.status === "failed") document.getElementById("note").textContent = "Couldn't start AR here. Try Chrome on an ARCore phone.";
+});
 
 function pickVoice() {
   const vs = speechSynthesis.getVoices().filter(v => v.lang.startsWith("en"));
